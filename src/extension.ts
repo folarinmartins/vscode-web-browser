@@ -1,3 +1,4 @@
+// File: src/extension.ts
 import * as vscode from 'vscode';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -27,6 +28,13 @@ export function activate(context: vscode.ExtensionContext) {
                         const bookmarks = getBookmarks(context);
                         panel.webview.postMessage({ command: 'updateBookmarks', bookmarks });
                         return;
+                    case 'saveHistory':
+                        saveHistory(context, message.url, message.title);
+                        return;
+                    case 'getHistory':
+                        const history = getHistory(context);
+                        panel.webview.postMessage({ command: 'updateHistory', history });
+                        return;
                 }
             },
             undefined,
@@ -44,17 +52,19 @@ function getWebviewContent(context: vscode.ExtensionContext) {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https:;">
             <title>VS Code Browser</title>
             <style>
-                body { font-family: Arial, sans-serif; padding: 10px; }
+                body { font-family: Arial, sans-serif; padding: 10px; display: flex; flex-direction: column; height: 100vh; margin: 0; }
                 #navbar { display: flex; margin-bottom: 10px; }
                 #urlInput { flex-grow: 1; margin-right: 5px; }
                 #tabsContainer { display: flex; margin-bottom: 10px; }
                 .tab { padding: 5px 10px; border: 1px solid #ccc; margin-right: 5px; cursor: pointer; }
                 .tab.active { background-color: #e0e0e0; }
-                #browserFrame { width: 100%; height: 500px; border: none; }
-                #bookmarksContainer { margin-top: 10px; }
-                .bookmark { margin-bottom: 5px; }
+                #browserFrame { flex-grow: 1; border: none; }
+                #bottomPanel { display: flex; height: 150px; margin-top: 10px; }
+                #bookmarksContainer, #historyContainer { flex: 1; overflow-y: auto; margin-right: 10px; }
+                .bookmark, .history-item { margin-bottom: 5px; cursor: pointer; }
             </style>
         </head>
         <body>
@@ -64,13 +74,20 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                 <button id="refreshButton">↻</button>
                 <input type="text" id="urlInput" placeholder="Enter URL">
                 <button id="goButton">Go</button>
+                <button id="bookmarkButton">🔖</button>
                 <button id="addTabButton">+</button>
             </div>
             <div id="tabsContainer"></div>
             <iframe id="browserFrame"></iframe>
-            <div id="bookmarksContainer">
-                <h3>Bookmarks</h3>
-                <div id="bookmarksList"></div>
+            <div id="bottomPanel">
+                <div id="bookmarksContainer">
+                    <h3>Bookmarks</h3>
+                    <div id="bookmarksList"></div>
+                </div>
+                <div id="historyContainer">
+                    <h3>History</h3>
+                    <div id="historyList"></div>
+                </div>
             </div>
             <script>
                 const vscode = acquireVsCodeApi();
@@ -80,14 +97,14 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                 const backButton = document.getElementById('backButton');
                 const forwardButton = document.getElementById('forwardButton');
                 const refreshButton = document.getElementById('refreshButton');
+                const bookmarkButton = document.getElementById('bookmarkButton');
                 const addTabButton = document.getElementById('addTabButton');
                 const tabsContainer = document.getElementById('tabsContainer');
                 const bookmarksList = document.getElementById('bookmarksList');
+                const historyList = document.getElementById('historyList');
 
                 let tabs = [];
                 let currentTabIndex = -1;
-                let history = [];
-                let currentHistoryIndex = -1;
 
                 function createTab(url = '') {
                     const tab = { url, history: [], currentIndex: -1 };
@@ -126,6 +143,7 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                     tabs[currentTabIndex].history.push(url);
                     tabs[currentTabIndex].currentIndex = tabs[currentTabIndex].history.length - 1;
                     renderTabs();
+                    saveHistoryItem(url);
                 }
 
                 goButton.addEventListener('click', () => navigateTo(urlInput.value));
@@ -153,6 +171,8 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                     browserFrame.src = browserFrame.src;
                 });
 
+                bookmarkButton.addEventListener('click', () => saveBookmark());
+
                 addTabButton.addEventListener('click', () => createTab());
 
                 browserFrame.addEventListener('load', () => {
@@ -166,10 +186,21 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                     const url = browserFrame.src;
                     const title = browserFrame.contentDocument.title || url;
                     vscode.postMessage({ command: 'saveBookmark', url, title });
+                    loadBookmarks();
                 }
 
                 function loadBookmarks() {
                     vscode.postMessage({ command: 'getBookmarks' });
+                }
+
+                function saveHistoryItem(url) {
+                    const title = url;
+                    vscode.postMessage({ command: 'saveHistory', url, title });
+                    loadHistory();
+                }
+
+                function loadHistory() {
+                    vscode.postMessage({ command: 'getHistory' });
                 }
 
                 window.addEventListener('message', event => {
@@ -177,6 +208,9 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                     switch (message.command) {
                         case 'updateBookmarks':
                             renderBookmarks(message.bookmarks);
+                            break;
+                        case 'updateHistory':
+                            renderHistory(message.history);
                             break;
                     }
                 });
@@ -192,9 +226,21 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                     });
                 }
 
+                function renderHistory(history) {
+                    historyList.innerHTML = '';
+                    history.forEach(item => {
+                        const historyElement = document.createElement('div');
+                        historyElement.className = 'history-item';
+                        historyElement.textContent = item.title;
+                        historyElement.onclick = () => navigateTo(item.url);
+                        historyList.appendChild(historyElement);
+                    });
+                }
+
                 // Initial setup
                 createTab();
                 loadBookmarks();
+                loadHistory();
             </script>
         </body>
         </html>
@@ -209,6 +255,17 @@ function saveBookmark(context: vscode.ExtensionContext, url: string, title: stri
 
 function getBookmarks(context: vscode.ExtensionContext): Array<{url: string, title: string}> {
     return context.globalState.get<Array<{url: string, title: string}>>('bookmarks', []);
+}
+
+function saveHistory(context: vscode.ExtensionContext, url: string, title: string) {
+    const history = context.globalState.get<Array<{url: string, title: string}>>('history', []);
+    history.unshift({ url, title });
+    if (history.length > 100) {history.pop();} // Limit history to 100 items
+    context.globalState.update('history', history);
+}
+
+function getHistory(context: vscode.ExtensionContext): Array<{url: string, title: string}> {
+    return context.globalState.get<Array<{url: string, title: string}>>('history', []);
 }
 
 export function deactivate() {}
