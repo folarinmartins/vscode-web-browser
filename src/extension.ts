@@ -1,39 +1,41 @@
+/** @format */
 // File: src/extension.ts
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Congratulations, your extension "vscode-browser-extension" is now active!');
 
-    let disposable = vscode.commands.registerCommand('vscode-browser.openBrowser', () => {
-        const panel = vscode.window.createWebviewPanel(
-            'browserView',
-            'Web Browser',
-            vscode.ViewColumn.One,
-            {
-                enableScripts: true,
-                retainContextWhenHidden: true
-            }
-        );
+    let disposable = vscode.commands.registerCommand("vscode-browser.openBrowser", () => {
+        const panel = vscode.window.createWebviewPanel("browserView", "Web Browser", vscode.ViewColumn.One, {
+            enableScripts: true,
+            retainContextWhenHidden: true,
+        });
 
         panel.webview.html = getWebviewContent(context);
 
         // Handle messages from the webview
         panel.webview.onDidReceiveMessage(
-            message => {
+            (message) => {
                 switch (message.command) {
-                    case 'saveBookmark':
+                    case "saveBookmark":
                         saveBookmark(context, message.url, message.title);
                         return;
-                    case 'getBookmarks':
+                    case "getBookmarks":
                         const bookmarks = getBookmarks(context);
-                        panel.webview.postMessage({ command: 'updateBookmarks', bookmarks });
+                        panel.webview.postMessage({ command: "updateBookmarks", bookmarks });
                         return;
-                    case 'saveHistory':
+                    case "saveHistory":
                         saveHistory(context, message.url, message.title);
                         return;
-                    case 'getHistory':
+                    case "getHistory":
                         const history = getHistory(context);
-                        panel.webview.postMessage({ command: 'updateHistory', history });
+                        panel.webview.postMessage({ command: "updateHistory", history });
+                        return;
+                    case "deleteHistoryItem":
+                        deleteHistoryItem(context, message.url);
+                        return;
+                    case "clearHistory":
+                        clearHistory(context);
                         return;
                 }
             },
@@ -52,40 +54,48 @@ function getWebviewContent(context: vscode.ExtensionContext) {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https:;">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src *; img-src https: data:; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https:;">
             <title>VS Code Browser</title>
             <style>
-                body { font-family: Arial, sans-serif; padding: 10px; display: flex; flex-direction: column; height: 100vh; margin: 0; }
+                body { font-family: Arial, sans-serif; padding: 0; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+                #topPanel { position: fixed; top: 0; left: 0; right: 0; background: #f0f0f0; z-index: 1000; padding: 10px; }
                 #navbar { display: flex; margin-bottom: 10px; }
                 #urlInput { flex-grow: 1; margin-right: 5px; }
                 #tabsContainer { display: flex; margin-bottom: 10px; }
                 .tab { padding: 5px 10px; border: 1px solid #ccc; margin-right: 5px; cursor: pointer; }
                 .tab.active { background-color: #e0e0e0; }
-                #browserFrame { flex-grow: 1; border: none; }
-                #bottomPanel { display: flex; height: 150px; margin-top: 10px; }
-                #bookmarksContainer, #historyContainer { flex: 1; overflow-y: auto; margin-right: 10px; }
+                #browserFrame { flex-grow: 1; border: none; margin-top: 100px; }
+                #bottomPanel { position: fixed; bottom: 0; left: 0; right: 0; background: #f0f0f0; }
+                .panel-header { padding: 10px; background: #e0e0e0; cursor: pointer; }
+                .panel-content { max-height: 200px; overflow-y: auto; display: none; padding: 10px; }
+                .panel-content.active { display: block; }
                 .bookmark, .history-item { margin-bottom: 5px; cursor: pointer; }
+                .history-item { display: flex; justify-content: space-between; }
+                .delete-history { cursor: pointer; color: red; }
             </style>
         </head>
         <body>
-            <div id="navbar">
-                <button id="backButton">←</button>
-                <button id="forwardButton">→</button>
-                <button id="refreshButton">↻</button>
-                <input type="text" id="urlInput" placeholder="Enter URL">
-                <button id="goButton">Go</button>
-                <button id="bookmarkButton">🔖</button>
-                <button id="addTabButton">+</button>
+            <div id="topPanel">
+                <div id="navbar">
+                    <button id="backButton">←</button>
+                    <button id="forwardButton">→</button>
+                    <button id="refreshButton">↻</button>
+                    <input type="text" id="urlInput" placeholder="Enter URL">
+                    <button id="goButton">Go</button>
+                    <button id="bookmarkButton">🔖</button>
+                    <button id="addTabButton">+</button>
+                </div>
+                <div id="tabsContainer"></div>
             </div>
-            <div id="tabsContainer"></div>
-            <iframe id="browserFrame"></iframe>
+            <iframe id="browserFrame" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
             <div id="bottomPanel">
-                <div id="bookmarksContainer">
-                    <h3>Bookmarks</h3>
+                <div class="panel-header" id="bookmarksHeader">Bookmarks</div>
+                <div class="panel-content" id="bookmarksContainer">
                     <div id="bookmarksList"></div>
                 </div>
-                <div id="historyContainer">
-                    <h3>History</h3>
+                <div class="panel-header" id="historyHeader">History</div>
+                <div class="panel-content" id="historyContainer">
+                    <button id="clearHistoryButton">Clear All History</button>
                     <div id="historyList"></div>
                 </div>
             </div>
@@ -102,6 +112,11 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                 const tabsContainer = document.getElementById('tabsContainer');
                 const bookmarksList = document.getElementById('bookmarksList');
                 const historyList = document.getElementById('historyList');
+                const clearHistoryButton = document.getElementById('clearHistoryButton');
+                const bookmarksHeader = document.getElementById('bookmarksHeader');
+                const historyHeader = document.getElementById('historyHeader');
+                const bookmarksContainer = document.getElementById('bookmarksContainer');
+                const historyContainer = document.getElementById('historyContainer');
 
                 let tabs = [];
                 let currentTabIndex = -1;
@@ -203,6 +218,24 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                     vscode.postMessage({ command: 'getHistory' });
                 }
 
+                function deleteHistoryItem(url) {
+                    vscode.postMessage({ command: 'deleteHistoryItem', url });
+                    loadHistory();
+                }
+
+                clearHistoryButton.addEventListener('click', () => {
+                    vscode.postMessage({ command: 'clearHistory' });
+                    loadHistory();
+                });
+
+                bookmarksHeader.addEventListener('click', () => {
+                    bookmarksContainer.classList.toggle('active');
+                });
+
+                historyHeader.addEventListener('click', () => {
+                    historyContainer.classList.toggle('active');
+                });
+
                 window.addEventListener('message', event => {
                     const message = event.data;
                     switch (message.command) {
@@ -231,8 +264,18 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                     history.forEach(item => {
                         const historyElement = document.createElement('div');
                         historyElement.className = 'history-item';
-                        historyElement.textContent = item.title;
-                        historyElement.onclick = () => navigateTo(item.url);
+                        const titleSpan = document.createElement('span');
+                        titleSpan.textContent = item.title;
+                        titleSpan.onclick = () => navigateTo(item.url);
+                        const deleteButton = document.createElement('span');
+                        deleteButton.textContent = '🗑️';
+                        deleteButton.className = 'delete-history';
+                        deleteButton.onclick = (e) => {
+                            e.stopPropagation();
+                            deleteHistoryItem(item.url);
+                        };
+                        historyElement.appendChild(titleSpan);
+                        historyElement.appendChild(deleteButton);
                         historyList.appendChild(historyElement);
                     });
                 }
@@ -248,24 +291,34 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 }
 
 function saveBookmark(context: vscode.ExtensionContext, url: string, title: string) {
-    const bookmarks = context.globalState.get<Array<{url: string, title: string}>>('bookmarks', []);
+    const bookmarks = context.globalState.get<Array<{ url: string; title: string }>>("mfolarin_browser_bookmarks", []);
     bookmarks.push({ url, title });
-    context.globalState.update('bookmarks', bookmarks);
+    context.globalState.update("mfolarin_browser_bookmarks", bookmarks);
 }
 
-function getBookmarks(context: vscode.ExtensionContext): Array<{url: string, title: string}> {
-    return context.globalState.get<Array<{url: string, title: string}>>('bookmarks', []);
+function getBookmarks(context: vscode.ExtensionContext): Array<{ url: string; title: string }> {
+    return context.globalState.get<Array<{ url: string; title: string }>>("mfolarin_browser_bookmarks", []);
 }
 
 function saveHistory(context: vscode.ExtensionContext, url: string, title: string) {
-    const history = context.globalState.get<Array<{url: string, title: string}>>('history', []);
+    const history = context.globalState.get<Array<{ url: string; title: string }>>("mfolarin_browser_history", []);
     history.unshift({ url, title });
-    if (history.length > 100) {history.pop();} // Limit history to 100 items
-    context.globalState.update('history', history);
+    if (history.length > 100) history.pop(); // Limit history to 100 items
+    context.globalState.update("mfolarin_browser_history", history);
 }
 
-function getHistory(context: vscode.ExtensionContext): Array<{url: string, title: string}> {
-    return context.globalState.get<Array<{url: string, title: string}>>('history', []);
+function getHistory(context: vscode.ExtensionContext): Array<{ url: string; title: string }> {
+    return context.globalState.get<Array<{ url: string; title: string }>>("mfolarin_browser_history", []);
 }
 
-export function deactivate() {}
+function deleteHistoryItem(context: vscode.ExtensionContext, url: string) {
+    const history = context.globalState.get<Array<{ url: string; title: string }>>("mfolarin_browser_history", []);
+    const updatedHistory = history.filter((item) => item.url !== url);
+    context.globalState.update("mfolarin_browser_history", updatedHistory);
+}
+
+function clearHistory(context: vscode.ExtensionContext) {
+    context.globalState.update("mfolarin_browser_history", []);
+}
+
+export function deactivate() { }
