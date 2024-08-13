@@ -8,7 +8,9 @@ All notable changes to the "vscode-web-browser" extension will be documented in 
 
 ### Fixed
 
--   Fixed bookmarks not saving
+-   Bookmarks not saving
+-   Remove "https://" from tab title when address changes for existing tab
+-   Session handling so google.com loads properly
 
 ## [1.0.4] - 2024-08-13
 
