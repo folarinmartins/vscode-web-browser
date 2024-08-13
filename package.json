@@ -2,7 +2,7 @@
   "name": "mfolarin-vscode-web-browser",
   "displayName": "VS Code Web Browser",
   "description": "VS Code fully featured web browser with history, bookmarks and full navigation support",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "publisher": "mfolarin",
   "engines": {
     "vscode": "^1.92.0"
