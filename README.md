@@ -14,8 +14,8 @@ A powerful Visual Studio Code extension that integrates a full-featured web brow
 
 ## Screenshots
 
-![Web Browser in VSCode](https://github.com/folarinmartins/vscode-web-browser/images/screenshot1.png)
-![Bookmark & History Management](https://github.com/folarinmartins/vscode-web-browser/images/screenshot2.png)
+![Web Browser in VSCode](images/screenshot1.png)
+![Bookmark & History Management](images/screenshot2.png)
 
 ## Installation
 
@@ -25,7 +25,7 @@ A powerful Visual Studio Code extension that integrates a full-featured web brow
 4. Click **Install** to install the extension.
 5. Once installed, use the `vscode-browser.openBrowser` command to launch the web browser.
 
-Alternatively, you can install the extension from the [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=yourname.vscode-web-browser).
+Alternatively, you can install the extension from the [VSCode Marketplace](rttps://marketplace.visualstudio.com/items?itemName=yourname.vscode-web-browser).
 
 ## Usage
 
