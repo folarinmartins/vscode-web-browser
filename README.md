@@ -41,6 +41,10 @@ Alternatively, you can install the extension from the [VSCode Marketplace](rttps
 -   **Limited Browser Features**: This is not a full-fledged browser and lacks some features like extensions or developer tools.
 -   **No Session Handling**: Pages with session-handling tokens may not render properly
 
+## Change log
+
+-   1.0.2 Initial release
+
 ## Roadmap and Future Features
 
 -   **Improved Performance**: Optimization to handle more complex web pages smoothly.
