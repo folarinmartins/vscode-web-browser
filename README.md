@@ -44,6 +44,7 @@ Alternatively, you can install the extension from the [VSCode Marketplace](https
 
 ## Change log
 
+-   1.0.3 added product icon
 -   1.0.2 Initial release
 
 ## Roadmap and Future Features
