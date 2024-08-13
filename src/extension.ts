@@ -2,9 +2,9 @@
 // File: src/extension.ts
 import * as vscode from "vscode";
 export function activate(context: vscode.ExtensionContext) {
-    console.log('Congratulations, your extension "vscode-browser-extension" is now active!');
+    console.log('Congratulations, your extension "mfolarin-vscode-web-browser-extension" is now active!');
 
-    let disposable = vscode.commands.registerCommand('vscode-browser.openBrowser', () => {
+    let disposable = vscode.commands.registerCommand('mfolarin-vscode-web-browser.openBrowser', () => {
         const panel = vscode.window.createWebviewPanel(
             'browserView',
             'Web Browser',
@@ -148,7 +148,7 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                         const tabElement = document.createElement('div');
                         tabElement.className = 'tab' + (index === currentTabIndex ? ' active' : '');
                         const titleSpan = document.createElement('span');
-                        titleSpan.textContent = tab.title || 'New Tab';
+                        titleSpan.textContent = tab.url.replace("https://","") || 'Tab ' + (index+1);
                         titleSpan.onclick = () => switchTab(index);
                         const closeButton = document.createElement('span');
                         closeButton.textContent = '×';

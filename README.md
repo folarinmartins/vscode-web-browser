@@ -1,47 +1,66 @@
 <!-- @format -->
 
-# VS Code Browser Extension
+# VSCode Web Browser Extension
 
-A fully featured web browser extension for Visual Studio Code.
+A powerful Visual Studio Code extension that integrates a full-featured web browser directly within your editor. This extension is perfect for developers who need to browse the web, research, or test web pages without leaving their coding environment.
 
 ## Features
 
--   Integrated web browsing within VS Code
--   Tabbed interface for multiple pages
--   Navigation controls (back, forward, refresh)
--   Bookmarks functionality
--   Browsing history for each tab
+-   **Integrated Web Browser**: Open a web browser directly within VSCode.
+-   **Bookmark Management**: Save, retrieve, and manage bookmarks for quick access to your favorite web pages.
+-   **Browsing History**: Automatically save your browsing history and retrieve it anytime.
+-   **Persistent State**: The webview context is retained even when hidden, ensuring you don't lose your work.
+-   **Script Execution**: Enables the execution of scripts within the webview, providing a full browsing experience.
+
+## Screenshots
+
+![Web Browser in VSCode](https://github.com/folarinmartins/vscode-web-browser/images/screenshot1.png)
+![Bookmark & History Management](https://github.com/folarinmartins/vscode-web-browser/images/screenshot2.png)
 
 ## Installation
 
-1. Download the `.vsix` file from the latest release.
-2. Open VS Code and navigate to the Extensions view (`Ctrl+Shift+X`).
-3. Click on the "..." menu in the top-right corner of the Extensions view.
-4. Select "Install from VSIX..." and choose the downloaded `.vsix` file.
+1. Open Visual Studio Code.
+2. Go to the Extensions view by clicking on the Extensions icon in the Activity Bar on the side of the window.
+3. Search for `vscode-web-browser`.
+4. Click **Install** to install the extension.
+5. Once installed, use the `vscode-browser.openBrowser` command to launch the web browser.
+
+Alternatively, you can install the extension from the [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=yourname.vscode-web-browser).
 
 ## Usage
 
-1. Open the Command Palette (`Ctrl+Shift+P`).
-2. Type "Open Web Browser" and select the command to launch the browser interface.
-3. Use the address bar to navigate to websites.
-4. Use the navigation buttons to go back, forward, or refresh the page.
-5. Click the "+" button to open a new tab.
-6. Click on tab headers to switch between tabs.
-7. Bookmarks are displayed at the bottom of the browser interface. Click on a bookmark to navigate to it.
+1. Press `Ctrl+Shift+P` to open the Command Palette.
+2. Type `Open Browser` and select `vscode-browser.openBrowser` from the list.
+3. The web browser will open in a new panel. You can start browsing immediately.
+4. To save a bookmark, click the bookmark icon in the webview toolbar.
+5. To view your bookmarks or history, use the respective icons or commands.
 
-## Development
+## Known Issues
 
-To set up the development environment:
+-   **Performance**: The webview may experience performance issues with very complex or resource-intensive web pages.
+-   **Limited Browser Features**: This is not a full-fledged browser and lacks some features like extensions or developer tools.
+-   **No Session Handling**: Pages with session-handling tokens may not render properly
 
-1. Clone this repository.
-2. Run `npm install` to install dependencies.
-3. Open the project in VS Code.
-4. Press `F5` to run the extension in a new VS Code Development Host window.
+## Roadmap and Future Features
+
+-   **Improved Performance**: Optimization to handle more complex web pages smoothly.
+-   **Enhanced Bookmarking**: Organize bookmarks into folders and add tags for better management.
+-   **Session Management**: Allow users to log in to secure websites and manage tokens and headers
+-   **Customizable UI**: Themes and layout customizations for a more personalized experience.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! To contribute:
+
+1. Fork the repository from [GitHub](https://github.com/folarinmartins/vscode-web-browser).
+2. Create a new branch (`git checkout -b feature/your-feature-name`).
+3. Make your changes.
+4. Commit your changes (`git commit -m 'Add some feature'`).
+5. Push to the branch (`git push origin feature/your-feature-name`).
+6. Open a Pull Request.
+
+Please ensure that your code adheres to the coding standards and includes appropriate tests.
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
