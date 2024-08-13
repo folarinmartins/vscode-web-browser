@@ -40,6 +40,7 @@ Alternatively, you can install the extension from the [VSCode Marketplace](https
 -   **Performance**: The webview may experience performance issues with very complex or resource-intensive web pages.
 -   **Limited Browser Features**: This is not a full-fledged browser and lacks some features like extensions or developer tools.
 -   **No Session Handling**: Pages with session-handling tokens may not render properly
+-   **Bookmarks not saving**: Bookmarks collection is currently not being properly populated
 
 ## Change log
 
@@ -51,6 +52,7 @@ Alternatively, you can install the extension from the [VSCode Marketplace](https
 -   **Enhanced Bookmarking**: Organize bookmarks into folders and add tags for better management.
 -   **Session Management**: Allow users to log in to secure websites and manage tokens and headers
 -   **Customizable UI**: Themes and layout customizations for a more personalized experience.
+-   **VS Code links integration**: Enable extension to handle vs code links instead of opening system browser
 
 ## Contributing
 
