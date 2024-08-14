@@ -7,9 +7,10 @@ A powerful Visual Studio Code extension that integrates a full-featured web brow
 ## Features
 
 -   **Integrated Web Browser**: Open a web browser directly within VSCode.
--   **Bookmark Management**: Save, retrieve, and manage bookmarks for quick access to your favorite web pages.
+-   **Multi-tab**: Open multiple tabs, and view your favorite pages by switching between tabs
 -   **Browsing History**: Automatically save your browsing history and retrieve it anytime.
--   **Persistent State**: The webview context is retained even when hidden, ensuring you don't lose your work.
+-   **Bookmark Management**: Save, retrieve, and manage bookmarks for quick access to your favorite web pages.
+-   **Persistent State**: The webview context is retained even when hidden, and upon vscode restarts, ensuring you don't lose your work.
 -   **Script Execution**: Enables the execution of scripts within the webview, providing a full browsing experience.
 
 ## Screenshots
