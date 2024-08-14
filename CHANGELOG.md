@@ -25,6 +25,13 @@ All notable changes to the "vscode-web-browser" extension will be documented in 
 
 ### Security
 
+
+## [1.0.5] - 2024-08-13
+
+### Changed
+
+- Updated readme and changelog
+
 ## [1.0.4] - 2024-08-13
 
 ### Added

@@ -43,11 +43,6 @@ Alternatively, you can install the extension from the [VSCode Marketplace](https
 -   **No Session Handling**: Pages with session-handling tokens may not render properly
 -   **Bookmarks not saving**: Bookmarks collection is currently not being properly populated
 
-## Change log
-
--   1.0.3 added product icon
--   1.0.2 Initial release
-
 ## Roadmap and Future Features
 
 -   **Improved Performance**: Optimization to handle more complex web pages smoothly.
@@ -55,6 +50,8 @@ Alternatively, you can install the extension from the [VSCode Marketplace](https
 -   **Session Management**: Allow users to log in to secure websites and manage tokens and headers
 -   **Customizable UI**: Themes and layout customizations for a more personalized experience.
 -   **VS Code links integration**: Enable extension to handle vs code links instead of opening system browser
+
+Read more from the [changelog](https://github.com/folarinmartins/vscode-web-browser/changelog.md).
 
 ## Contributing
 
