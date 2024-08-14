@@ -1,58 +1,121 @@
 /** @format */
 // File: src/extension.ts
 import * as vscode from "vscode";
+import * as http from "http";
+import * as https from "https";
+import { URL } from "url";
+
+let proxyServer: http.Server | null = null;
+let outputChannel: vscode.OutputChannel;
+
 export function activate(context: vscode.ExtensionContext) {
     console.log('Congratulations, your extension "mfolarin-vscode-web-browser-extension" is now active!');
 
-    let disposable = vscode.commands.registerCommand('mfolarin-vscode-web-browser.openBrowser', () => {
-        const panel = vscode.window.createWebviewPanel(
-            'browserView',
-            'Web Browser',
-            vscode.ViewColumn.One,
-            {
-                enableScripts: true,
-                retainContextWhenHidden: true
-            }
-        );
+    // Create an output channel for logging
+    outputChannel = vscode.window.createOutputChannel("VS Code Browser Debug");
 
-        panel.webview.html = getWebviewContent(context);
+    let disposable = vscode.commands.registerCommand('mfolarin-vscode-web-browser.openBrowser', () => {
+        startProxyServer().then(() => {
+            const panel = vscode.window.createWebviewPanel(
+                'browserView',
+                'Web Browser',
+                vscode.ViewColumn.One,
+                {
+                    enableScripts: true,
+                    retainContextWhenHidden: true
+                }
+            );
+
+            panel.webview.html = getWebviewContent(context);
+
+            // Handle messages from the webview
+            panel.webview.onDidReceiveMessage(
+                message => {
+                    switch (message.command) {
+                        case 'saveBookmark':
+                            saveBookmark(context, message.url, message.title);
+                            return;
+                        case 'getBookmarks':
+                            const bookmarks = getBookmarks(context);
+                            panel.webview.postMessage({ command: 'updateBookmarks', bookmarks });
+                            return;
+                        case 'saveHistory':
+                            saveHistory(context, message.url, message.title);
+                            return;
+                        case 'getHistory':
+                            const history = getHistory(context);
+                            panel.webview.postMessage({ command: 'updateHistory', history });
+                            return;
+                        case 'deleteHistoryItem':
+                            deleteHistoryItem(context, message.url);
+                            return;
+                        case 'clearHistory':
+                            clearHistory(context);
+                            return;
+                        case 'saveTabs':
+                            saveTabs(context, message.tabs);
+                            return;
+                        case 'getTabs':
+                            const tabs = getTabs(context);
+                            panel.webview.postMessage({ command: 'restoreTabs', tabs });
+                            return;
+                        case 'proxyRequest':
+                            handleProxyRequest(message.url, panel.webview);
+                            return;
+                    }
+                },
+                undefined,
+                context.subscriptions
+            );
+        });
+        // const panel = vscode.window.createWebviewPanel(
+        //     'browserView',
+        //     'Web Browser',
+        //     vscode.ViewColumn.One,
+        //     {
+        //         enableScripts: true,
+        //         retainContextWhenHidden: true
+        //     }
+        // );
+
+        // panel.webview.html = getWebviewContent(context);
 
         // Handle messages from the webview
-        panel.webview.onDidReceiveMessage(
-            message => {
-                switch (message.command) {
-                    case 'saveBookmark':
-                        saveBookmark(context, message.url, message.title);
-                        return;
-                    case 'getBookmarks':
-                        const bookmarks = getBookmarks(context);
-                        panel.webview.postMessage({ command: 'updateBookmarks', bookmarks });
-                        return;
-                    case 'saveHistory':
-                        saveHistory(context, message.url, message.title);
-                        return;
-                    case 'getHistory':
-                        const history = getHistory(context);
-                        panel.webview.postMessage({ command: 'updateHistory', history });
-                        return;
-                    case 'deleteHistoryItem':
-                        deleteHistoryItem(context, message.url);
-                        return;
-                    case 'clearHistory':
-                        clearHistory(context);
-                        return;
-                    case 'saveTabs':
-                        saveTabs(context, message.tabs);
-                        return;
-                    case 'getTabs':
-                        const tabs = getTabs(context);
-                        panel.webview.postMessage({ command: 'restoreTabs', tabs });
-                        return;
-                }
-            },
-            undefined,
-            context.subscriptions
-        );
+        // panel.webview.onDidReceiveMessage(
+        //     message => {
+        //         switch (message.command) {
+        //             case 'saveBookmark':
+        //                 saveBookmark(context, message.url, message.title);
+        //                 return;
+        //             case 'getBookmarks':
+        //                 const bookmarks = getBookmarks(context);
+        //                 panel.webview.postMessage({ command: 'updateBookmarks', bookmarks });
+        //                 return;
+        //             case 'saveHistory':
+        //                 saveHistory(context, message.url, message.title);
+        //                 return;
+        //             case 'getHistory':
+        //                 const history = getHistory(context);
+        //                 panel.webview.postMessage({ command: 'updateHistory', history });
+        //                 return;
+        //             case 'deleteHistoryItem':
+        //                 deleteHistoryItem(context, message.url);
+        //                 return;
+        //             case 'clearHistory':
+        //                 clearHistory(context);
+        //                 return;
+        //             case 'saveTabs':
+        //                 saveTabs(context, message.tabs);
+        //                 return;
+        //             case 'getTabs':
+        //                 const tabs = getTabs(context);
+        //                 panel.webview.postMessage({ command: 'restoreTabs', tabs });
+        //                 return;
+        //         }
+        //     },
+        //     undefined,
+        //     context.subscriptions
+        // );
     });
 
     context.subscriptions.push(disposable);
@@ -187,6 +250,7 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                     if (!url.startsWith('http')) {
                         url = 'https://' + url;
                     }
+                    vscode.postMessage({ command: 'proxyRequest', url });
                     browserFrame.src = url;
                     urlInput.value = url;
                     tabs[currentTabIndex].url = url;
@@ -297,6 +361,10 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                         case 'restoreTabs':
                             restoreTabs(message.tabs);
                             break;
+                        case 'proxyResponse':
+                            const blob = new Blob([message.data], { type: 'text/html' });
+                            browserFrame.src = URL.createObjectURL(blob);
+                            break;
                     }
                 });
 
@@ -354,6 +422,76 @@ function getWebviewContent(context: vscode.ExtensionContext) {
     `;
 }
 
+async function startProxyServer() {
+    if (proxyServer) {
+        return;
+    }
+
+    proxyServer = http.createServer((req, res) => {
+        const targetUrl = new URL(req.url?.slice(1) || '');
+        outputChannel.appendLine(`Proxy request received for: ${targetUrl.toString()}`);
+        outputChannel.appendLine(`Method: ${req.method}`);
+        outputChannel.appendLine(`Headers: ${JSON.stringify(req.headers, null, 2)}`);
+
+        const options: http.RequestOptions | https.RequestOptions = {
+            hostname: targetUrl.hostname,
+            port: targetUrl.port || (targetUrl.protocol === 'https:' ? 443 : 80),
+            path: targetUrl.pathname + targetUrl.search,
+            method: req.method,
+            headers: {
+                ...req.headers,
+                host: targetUrl.host,
+            },
+        };
+
+        const proxyReq = (targetUrl.protocol === 'https:' ? https : http).request(options, (proxyRes) => {
+            outputChannel.appendLine(`Proxy response received from: ${targetUrl.toString()}`);
+            outputChannel.appendLine(`Status Code: ${proxyRes.statusCode}`);
+            outputChannel.appendLine(`Headers: ${JSON.stringify(proxyRes.headers, null, 2)}`);
+
+            res.writeHead(proxyRes.statusCode || 200, proxyRes.headers);
+            proxyRes.pipe(res);
+        });
+
+        proxyReq.on('error', (error) => {
+            outputChannel.appendLine(`Proxy request error: ${error.message}`);
+            res.writeHead(500, { 'Content-Type': 'text/plain' });
+            res.end('Proxy Error: ' + error.message);
+        });
+
+        req.pipe(proxyReq);
+    });
+
+    proxyServer.listen(0, '127.0.0.1', () => {
+        const address = proxyServer?.address();
+        if (address && typeof address !== 'string') {
+            outputChannel.appendLine(`Proxy server running on port ${address.port}`);
+        }
+    });
+}
+function handleProxyRequest(url: string, webview: vscode.Webview) {
+    const proxyUrl = `http://127.0.0.1:${(proxyServer?.address() as any).port}/${url}`;
+
+    outputChannel.appendLine(`Handling proxy request for: ${url}`);
+    outputChannel.appendLine(`Proxy URL: ${proxyUrl}`);
+
+    http.get(proxyUrl, (res) => {
+        let data = '';
+        res.on('data', (chunk) => {
+            data += chunk;
+        });
+        res.on('end', () => {
+            outputChannel.appendLine(`Proxy response received for: ${url}`);
+            outputChannel.appendLine(`Response size: ${data.length} bytes`);
+            outputChannel.appendLine(`Response preview: ${data.substring(0, 1000)}`);
+
+            webview.postMessage({ command: 'proxyResponse', data, headers: res.headers });
+        });
+    }).on('error', (err) => {
+        outputChannel.appendLine(`Error in handleProxyRequest: ${err.message}`);
+    });
+}
+
 function saveTabs(context: vscode.ExtensionContext, tabs: Array<{ url: string, title: string }>) {
     context.globalState.update('vscode_browser_tabs', tabs);
 }
@@ -392,4 +530,10 @@ function clearHistory(context: vscode.ExtensionContext) {
     context.globalState.update("vscode_browser_history", []);
 }
 
-export function deactivate() { }
+
+export function deactivate() {
+    if (proxyServer) {
+        proxyServer.close();
+    }
+    outputChannel.dispose();
+}
