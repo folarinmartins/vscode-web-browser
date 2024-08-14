@@ -11,6 +11,7 @@ All notable changes to the "vscode-web-browser" extension will be documented in 
 -   Bookmarks not saving
 -   Remove "https://" from tab title when address changes for existing tab
 -   Session handling so google.com loads properly
+-   Forward/Backward navigation button not working
 
 ### Changed
 
