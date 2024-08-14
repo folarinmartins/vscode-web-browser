@@ -12,6 +12,18 @@ All notable changes to the "vscode-web-browser" extension will be documented in 
 -   Remove "https://" from tab title when address changes for existing tab
 -   Session handling so google.com loads properly
 
+### Changed
+
+-   Make history set unique in most-recently-used order
+
+### Removed
+
+### Deprecated
+
+### Added
+
+### Security
+
 ## [1.0.4] - 2024-08-13
 
 ### Added
