@@ -63,7 +63,7 @@ export function activate(context: vscode.ExtensionContext) {
                             handleProxyRequest(message.url, panel.webview);
                             return;
                         case 'log':
-                            outputChannel.appendLine(`[Webview Console] $(message.text)`);
+                            outputChannel.appendLine(`[Webview] ${message.text}`);
                             return;
                     }
                 },
@@ -152,7 +152,7 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                 let currentTabIndex = -1;
 
                 function createTab(url = '', title = 'New Tab') {
-                    const tab = { url, title, content, history: [], currentIndex: -1 };
+                    const tab = { url, title, content: '', history: [], currentIndex: -1 };
                     tabs.push(tab);
                     switchTab(tabs.length - 1);
                     saveTabs();
@@ -165,7 +165,7 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                         const tabElement = document.createElement('div');
                         tabElement.className = 'tab' + (index === currentTabIndex ? ' active' : '');
                         const titleSpan = document.createElement('span');
-                        titleSpan.textContent = tab.url.replace("https://","") || 'Tab ' + (index+1);
+                        titleSpan.textContent = tab.title || 'New Tab';
                         titleSpan.onclick = () => switchTab(index);
                         const closeButton = document.createElement('span');
                         closeButton.textContent = '×';
@@ -178,11 +178,6 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                         tabElement.appendChild(closeButton);
                         tabsContainer.appendChild(tabElement);
                     });
-                    
-                    browserFrame.document.open();
-                    browserFrame.document.write(tabs[currentTabIndex].content);
-                    browserFrame.document.close();
-                    history.pushState(null, '', tabs[currentTabIndex].url);
                 }
                 
                 function renderTab(index, url, content){
@@ -199,10 +194,10 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                 }
 
                 function switchTab(index) {
-                    console.log("in switchTab", index, tabs.length, tabs[index]);
                     currentTabIndex = index;
                     renderTabs();
                     urlInput.value = tabs[currentTabIndex].url;
+                    browserFrame.srcdoc = tabs[currentTabIndex].content;
                 }
 
                 function closeTab(index) {
@@ -337,7 +332,11 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                             renderHistory(message.history);
                             break;
                         case 'restoreTabs':
-                            restoreTabs(message.tabs);
+                            if (message.tabs && message.tabs.length > 0) {
+                                restoreTabs(message.tabs);
+                            } else {
+                                createTab();
+                            }
                             break;
                         case 'proxyResponse':
                             renderTab(currentTabIndex, message.url, message.data);
