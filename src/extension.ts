@@ -159,13 +159,22 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                     console.error("number of tabs"+ tabs.length+": "+tab.title);
                 }
 
+                function switchTab(index) {
+                    console.log("switching tab to index",index);
+                    currentTabIndex = index;
+                    renderTabs();
+                    urlInput.value = tabs[currentTabIndex].url;
+                    browserFrame.srcdoc = tabs[currentTabIndex].content;
+                    console.log("Content received:", content);
+                }
+
                 function renderTabs() {
                     tabsContainer.innerHTML = '';
                     tabs.forEach((tab, index) => {
                         const tabElement = document.createElement('div');
                         tabElement.className = 'tab' + (index === currentTabIndex ? ' active' : '');
                         const titleSpan = document.createElement('span');
-                        titleSpan.textContent = tab.title || 'New Tab';
+                        titleSpan.textContent = tab.url.replace("https://","") || 'Tab ' + (index+1);
                         titleSpan.onclick = () => switchTab(index);
                         const closeButton = document.createElement('span');
                         closeButton.textContent = '×';
@@ -191,15 +200,6 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                         switchTab(index);
                         saveTabs();
                     } 
-                }
-
-                function switchTab(index) {
-                    console.log("switching tab to index",index);
-                    currentTabIndex = index;
-                    renderTabs();
-                    urlInput.value = tabs[currentTabIndex].url;
-                    browserFrame.srcdoc = tabs[currentTabIndex].content;
-                    console.log("Content received:", content);
                 }
 
                 function closeTab(index) {
@@ -387,15 +387,15 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                     });
                 }
                 
-                function consoleLog(...args){
-                    const text = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg): String(arg).join(' '));
-                    vscode.postMessage({command: 'log', text});
-                }
-                const systemConsoleLog = console.log;
-                console.log = function(...args){
-                    systemConsoleLog.apply(console, args);
-                    consoleLog(...args);
-                }
+                // function consoleLog(...args){
+                //     const text = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg): String(arg).join(' '));
+                //     vscode.postMessage({command: 'log', text});
+                // }
+                // const systemConsoleLog = console.log;
+                // console.log = function(...args){
+                //     systemConsoleLog.apply(console, args);
+                //     consoleLog(...args);
+                // }
                     
                 console.log("Initializing web view");
                 console.log("Object test: ", { key: 'value' });
