@@ -62,60 +62,15 @@ export function activate(context: vscode.ExtensionContext) {
                         case 'proxyRequest':
                             handleProxyRequest(message.url, panel.webview);
                             return;
+                        case 'log':
+                            outputChannel.appendLine(`[Webview Console] $(message.text)`);
+                            return;
                     }
                 },
                 undefined,
                 context.subscriptions
             );
         });
-        // const panel = vscode.window.createWebviewPanel(
-        //     'browserView',
-        //     'Web Browser',
-        //     vscode.ViewColumn.One,
-        //     {
-        //         enableScripts: true,
-        //         retainContextWhenHidden: true
-        //     }
-        // );
-
-        // panel.webview.html = getWebviewContent(context);
-
-        // Handle messages from the webview
-        // panel.webview.onDidReceiveMessage(
-        //     message => {
-        //         switch (message.command) {
-        //             case 'saveBookmark':
-        //                 saveBookmark(context, message.url, message.title);
-        //                 return;
-        //             case 'getBookmarks':
-        //                 const bookmarks = getBookmarks(context);
-        //                 panel.webview.postMessage({ command: 'updateBookmarks', bookmarks });
-        //                 return;
-        //             case 'saveHistory':
-        //                 saveHistory(context, message.url, message.title);
-        //                 return;
-        //             case 'getHistory':
-        //                 const history = getHistory(context);
-        //                 panel.webview.postMessage({ command: 'updateHistory', history });
-        //                 return;
-        //             case 'deleteHistoryItem':
-        //                 deleteHistoryItem(context, message.url);
-        //                 return;
-        //             case 'clearHistory':
-        //                 clearHistory(context);
-        //                 return;
-        //             case 'saveTabs':
-        //                 saveTabs(context, message.tabs);
-        //                 return;
-        //             case 'getTabs':
-        //                 const tabs = getTabs(context);
-        //                 panel.webview.postMessage({ command: 'restoreTabs', tabs });
-        //                 return;
-        //         }
-        //     },
-        //     undefined,
-        //     context.subscriptions
-        // );
     });
 
     context.subscriptions.push(disposable);
@@ -197,12 +152,11 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                 let currentTabIndex = -1;
 
                 function createTab(url = '', title = 'New Tab') {
-                    const tab = { url, title, history: [], currentIndex: -1 };
+                    const tab = { url, title, content, history: [], currentIndex: -1 };
                     tabs.push(tab);
-                    currentTabIndex = tabs.length - 1;
-                    renderTabs();
-                    navigateTo(url);
+                    switchTab(tabs.length - 1);
                     saveTabs();
+                    console.error("number of tabs"+ tabs.length+": "+tab.title);
                 }
 
                 function renderTabs() {
@@ -224,13 +178,31 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                         tabElement.appendChild(closeButton);
                         tabsContainer.appendChild(tabElement);
                     });
+                    
+                    browserFrame.document.open();
+                    browserFrame.document.write(tabs[currentTabIndex].content);
+                    browserFrame.document.close();
+                    history.pushState(null, '', tabs[currentTabIndex].url);
+                }
+                
+                function renderTab(index, url, content){
+                    console.log("in renderTab", index, url, content, tabs.length);
+                    if(tabs.length > index){
+                        console.log("tabs.length > index");
+                        tabs[index].url = url;
+                        tabs[index].title = url.replace("https://","");
+                        tabs[index].content = content;
+                        tabs[index].history.push(url);
+                        switchTab(index);
+                        saveTabs();
+                    } 
                 }
 
                 function switchTab(index) {
+                    console.log("in switchTab", index, tabs.length, tabs[index]);
                     currentTabIndex = index;
                     renderTabs();
                     urlInput.value = tabs[currentTabIndex].url;
-                    browserFrame.src = tabs[currentTabIndex].url;
                 }
 
                 function closeTab(index) {
@@ -240,7 +212,6 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                     } else if (currentTabIndex >= tabs.length) {
                         currentTabIndex = tabs.length - 1;
                     }
-                    renderTabs();
                     switchTab(currentTabIndex);
                     saveTabs();
                 }
@@ -251,24 +222,31 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                         url = 'https://' + url;
                     }
                     vscode.postMessage({ command: 'proxyRequest', url });
-                    browserFrame.src = url;
                     urlInput.value = url;
-                    tabs[currentTabIndex].url = url;
-                    tabs[currentTabIndex].history = tabs[currentTabIndex].history.slice(0, tabs[currentTabIndex].currentIndex + 1);
-                    tabs[currentTabIndex].history.push(url);
-                    tabs[currentTabIndex].currentIndex = tabs[currentTabIndex].history.length - 1;
-                    renderTabs();
                     saveHistoryItem(url);
-                    saveTabs();
                 }
 
+                //TODO: save current tab index so it is restored
                 function saveTabs() {
-                    const tabsToSave = tabs.map(tab => ({ url: tab.url, title: tab.title }));
+                    console.log("In saveTabs", tabs.length, currentTabIndex);
+                    const tabsToSave = tabs.map(tab => ({ url: tab.url, title: tab.title, content: tab.content }));
                     vscode.postMessage({ command: 'saveTabs', tabs: tabsToSave });
                 }
 
                 function loadTabs() {
                     vscode.postMessage({ command: 'getTabs' });
+                }
+                
+                function restoreTabs(savedTabs) {
+                    console.log("in restoreTabs", savedTabs.length);
+                    
+                    if (savedTabs.length > 0) {
+                        tabs = savedTabs.map(tab => ({ ...tab, history: [], currentIndex: -1 }));
+                        currentTabIndex = 0; //TODO: read value from extension state
+                        switchTab(currentTabIndex);
+                    } else {
+                        createTab();
+                    }
                 }
 
                 goButton.addEventListener('click', () => navigateTo(urlInput.value));
@@ -301,13 +279,13 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                 addTabButton.addEventListener('click', () => createTab());
 
                 browserFrame.addEventListener('load', () => {
-                    const url = browserFrame.contentWindow.location.href;
-                    const title = browserFrame.contentDocument.title || url;
-                    urlInput.value = url;
-                    tabs[currentTabIndex].url = url;
-                    tabs[currentTabIndex].title = title;
-                    renderTabs();
-                    saveTabs();
+                    // const url = browserFrame.contentWindow.location.href;
+                    // const title = browserFrame.contentDocument.title || url;
+                    // urlInput.value = url;
+                    // tabs[currentTabIndex].url = url;
+                    // tabs[currentTabIndex].title = title;
+                    // renderTabs();
+                    // saveTabs();
                 });
 
                 function saveBookmark() {
@@ -362,8 +340,10 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                             restoreTabs(message.tabs);
                             break;
                         case 'proxyResponse':
-                            const blob = new Blob([message.data], { type: 'text/html' });
-                            browserFrame.src = URL.createObjectURL(blob);
+                            renderTab(currentTabIndex, message.url, message.data);
+                            break;
+                        case 'proxyError':
+                            console.error('Proxy error:', message.error);
                             break;
                     }
                 });
@@ -379,17 +359,6 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                     });
                 }
                     
-                
-                function restoreTabs(savedTabs) {
-                    if (savedTabs.length > 0) {
-                        tabs = savedTabs.map(tab => ({ ...tab, history: [], currentIndex: -1 }));
-                        currentTabIndex = 0;
-                        renderTabs();
-                        navigateTo(tabs[currentTabIndex].url);
-                    } else {
-                        createTab();
-                    }
-                }
 
                 function renderHistory(history) {
                     historyList.innerHTML = '';
@@ -411,6 +380,19 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                         historyList.appendChild(historyElement);
                     });
                 }
+                
+                function consoleLog(...args){
+                    const text = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg): String(arg).join(' '));
+                    vscode.postMessage({command: 'log', text});
+                }
+                const systemConsoleLog = console.log;
+                console.log = function(...args){
+                    systemConsoleLog.apply(console, args);
+                    consoleLog(...args);
+                }
+                    
+                console.log("Initializing web view");
+                console.log("Object test: ", { key: 'value' });
 
                 // Initial setup
                 loadTabs();
@@ -475,21 +457,49 @@ function handleProxyRequest(url: string, webview: vscode.Webview) {
     outputChannel.appendLine(`Handling proxy request for: ${url}`);
     outputChannel.appendLine(`Proxy URL: ${proxyUrl}`);
 
-    http.get(proxyUrl, (res) => {
-        let data = '';
-        res.on('data', (chunk) => {
-            data += chunk;
+    const fetchContent = (currentUrl: string, redirectCount = 0): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const protocol = currentUrl.startsWith('https') ? https : http;
+            protocol.get(currentUrl, (res) => {
+                if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                    if (redirectCount > 5) {
+                        reject(new Error('Too many redirects'));
+                        return;
+                    }
+                    const redirectUrl = new URL(res.headers.location, currentUrl).toString();
+                    outputChannel.appendLine(`Redirecting to: ${redirectUrl}`);
+                    fetchContent(redirectUrl, redirectCount + 1).then(resolve).catch(reject);
+                } else {
+                    let data = '';
+                    res.on('data', (chunk) => {
+                        data += chunk;
+                    });
+                    res.on('end', () => {
+                        outputChannel.appendLine(`Response received for: ${currentUrl}`);
+                        outputChannel.appendLine(`Response size: ${data.length} bytes`);
+                        outputChannel.appendLine(`Response body: ${data}`);
+                        resolve(data);
+                    });
+                }
+            }).on('error', (err) => {
+                reject(err);
+            });
         });
-        res.on('end', () => {
-            outputChannel.appendLine(`Proxy response received for: ${url}`);
-            outputChannel.appendLine(`Response size: ${data.length} bytes`);
-            outputChannel.appendLine(`Response preview: ${data.substring(0, 1000)}`);
+    };
 
-            webview.postMessage({ command: 'proxyResponse', data, headers: res.headers });
+    fetchContent(proxyUrl)
+        .then((content) => {
+            // Modify content to handle relative URLs
+            const baseUrl = new URL(url);
+            content = content.replace(/(src|href)="\/(?!\/)/g, `$1="${baseUrl.origin}/`);
+            content = content.replace(/(src|href)="(?!http|\/\/)/g, `$1="${baseUrl.origin}/${baseUrl.pathname.split('/').slice(1, -1).join('/')}/`);
+
+            webview.postMessage({ command: 'proxyResponse', data: content, url: url });
+        })
+        .catch((err) => {
+            outputChannel.appendLine(`Error in handleProxyRequest: ${err.message}`);
+            webview.postMessage({ command: 'proxyError', error: err.message, url: url });
         });
-    }).on('error', (err) => {
-        outputChannel.appendLine(`Error in handleProxyRequest: ${err.message}`);
-    });
 }
 
 function saveTabs(context: vscode.ExtensionContext, tabs: Array<{ url: string, title: string }>) {
