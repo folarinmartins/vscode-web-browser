@@ -194,10 +194,12 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                 }
 
                 function switchTab(index) {
+                    console.log("switching tab to index",index);
                     currentTabIndex = index;
                     renderTabs();
                     urlInput.value = tabs[currentTabIndex].url;
                     browserFrame.srcdoc = tabs[currentTabIndex].content;
+                    console.log("Content received:", content);
                 }
 
                 function closeTab(index) {
@@ -282,6 +284,10 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                     // renderTabs();
                     // saveTabs();
                 });
+                browserFrame.onerror = (error) => {
+                    console.log("iframe error:", error);
+                };
+                
 
                 function saveBookmark() {
                     const url = browserFrame.src;
@@ -340,6 +346,7 @@ function getWebviewContent(context: vscode.ExtensionContext) {
                             break;
                         case 'proxyResponse':
                             renderTab(currentTabIndex, message.url, message.data);
+                            console.log("in proxyResponse", message.url, message.data.slice(0,100));
                             break;
                         case 'proxyError':
                             console.error('Proxy error:', message.error);
@@ -395,8 +402,8 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 
                 // Initial setup
                 loadTabs();
-                loadBookmarks();
                 loadHistory();
+                loadBookmarks();
             </script>
         </body>
         </html>
@@ -476,7 +483,7 @@ function handleProxyRequest(url: string, webview: vscode.Webview) {
                     res.on('end', () => {
                         outputChannel.appendLine(`Response received for: ${currentUrl}`);
                         outputChannel.appendLine(`Response size: ${data.length} bytes`);
-                        outputChannel.appendLine(`Response body: ${data}`);
+                        outputChannel.appendLine(`Response body: ${data.slice(0, 100)}...${data.slice(-100)}`);
                         resolve(data);
                     });
                 }
@@ -493,7 +500,10 @@ function handleProxyRequest(url: string, webview: vscode.Webview) {
             content = content.replace(/(src|href)="\/(?!\/)/g, `$1="${baseUrl.origin}/`);
             content = content.replace(/(src|href)="(?!http|\/\/)/g, `$1="${baseUrl.origin}/${baseUrl.pathname.split('/').slice(1, -1).join('/')}/`);
 
+            outputChannel.appendLine("posting proxyResponse message to handler, url:" + url);
             webview.postMessage({ command: 'proxyResponse', data: content, url: url });
+            outputChannel.appendLine("Done sending proxyResponse message to handler, url:" + url);
+            outputChannel.appendLine("Done sending proxyResponse message to handler, content:" + content.slice(0, 10) + "..." + content.slice(-10));
         })
         .catch((err) => {
             outputChannel.appendLine(`Error in handleProxyRequest: ${err.message}`);
