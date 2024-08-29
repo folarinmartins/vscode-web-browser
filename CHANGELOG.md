@@ -13,6 +13,55 @@ All notable changes to the "vscode-web-browser" extension will be documented in 
 -   Session handling so google.com loads properly
 -   Forward/Backward navigation button not working
 
+### Added
+
+#### Integration with VS Code
+
+-   Use VS Code's Extension API to create a custom view container
+-   Add a sidebar icon for easy access to the browser
+
+#### BrowserView setup
+
+-   Create a BrowserView within the VS Code window
+-   Implement basic navigation controls (back, forward, refresh, home)
+
+#### Address bar
+
+-   Implement autocomplete for URLs
+
+#### Developer tools
+
+-   Integrate Chromium DevTools for web development
+-   Add a toggle to show/hide DevTools
+
+#### Settings and customization
+
+-   Allow users to set a homepage
+-   Provide options for default search engine
+
+#### Security features
+
+-   Implement basic security checks for URLs
+-   Add options for content blocking
+
+#### Performance optimization
+
+-   Use lazy loading for tabs not in view
+-   Implement proper memory management
+
+#### Keyboard shortcuts
+
+-   Add custom shortcuts for browser actions
+-   Allow users to customize shortcuts
+
+#### Context menu
+
+-   Implement a right-click context menu with common browser actions
+
+#### Extension support
+
+-   Consider allowing Chrome extensions to be used in the browser
+
 ### Changed
 
 -   Make history set unique in most-recently-used order
@@ -25,12 +74,11 @@ All notable changes to the "vscode-web-browser" extension will be documented in 
 
 ### Security
 
-
 ## [1.0.5] - 2024-08-13
 
 ### Changed
 
-- Updated readme and changelog
+-   Updated readme and changelog
 
 ## [1.0.4] - 2024-08-13
 
