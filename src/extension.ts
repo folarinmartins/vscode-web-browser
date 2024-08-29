@@ -483,7 +483,7 @@ function handleProxyRequest(url: string, webview: vscode.Webview) {
                     res.on('end', () => {
                         outputChannel.appendLine(`Response received for: ${currentUrl}`);
                         outputChannel.appendLine(`Response size: ${data.length} bytes`);
-                        outputChannel.appendLine(`Response body: ${data.slice(0, 100)}...${data.slice(-100)}`);
+                        outputChannel.appendLine(`Response body: ${data}`);
                         resolve(data);
                     });
                 }
@@ -495,22 +495,46 @@ function handleProxyRequest(url: string, webview: vscode.Webview) {
 
     fetchContent(proxyUrl)
         .then((content) => {
-            // Modify content to handle relative URLs
+            // Modify content to handle relative URLs and extract CSS
             const baseUrl = new URL(url);
             content = content.replace(/(src|href)="\/(?!\/)/g, `$1="${baseUrl.origin}/`);
             content = content.replace(/(src|href)="(?!http|\/\/)/g, `$1="${baseUrl.origin}/${baseUrl.pathname.split('/').slice(1, -1).join('/')}/`);
 
-            outputChannel.appendLine("posting proxyResponse message to handler, url:" + url);
-            webview.postMessage({ command: 'proxyResponse', data: content, url: url });
-            outputChannel.appendLine("Done sending proxyResponse message to handler, url:" + url);
-            outputChannel.appendLine("Done sending proxyResponse message to handler, content:" + content.slice(0, 10) + "..." + content.slice(-10));
+            // Extract and inline CSS
+            const cssRegex = /<link[^>]+rel="stylesheet"[^>]*>/g;
+            const cssLinks = content.match(cssRegex) || [];
+
+            const fetchCssPromises = cssLinks.map(link => {
+                const hrefMatch = link.match(/href="([^"]+)"/);
+                if (hrefMatch) {
+                    const cssUrl = new URL(hrefMatch[1], baseUrl).toString();
+                    return fetchContent(cssUrl);
+                }
+                return Promise.resolve('');
+            });
+
+            Promise.all(fetchCssPromises)
+                .then(cssContents => {
+                    // Replace CSS links with inlined styles
+                    cssContents.forEach((css, index) => {
+                        content = content.replace(cssLinks[index], `<style>${css}</style>`);
+                    });
+
+                    outputChannel.appendLine("Posting proxyResponse message to handler, url:" + url);
+                    webview.postMessage({ command: 'proxyResponse', data: content, url: url });
+                    outputChannel.appendLine("Done sending proxyResponse message to handler, url:" + url);
+                })
+                .catch(err => {
+                    outputChannel.appendLine(`Error fetching CSS: ${err.message}`);
+                    // If there's an error fetching CSS, still send the content without CSS
+                    webview.postMessage({ command: 'proxyResponse', data: content, url: url });
+                });
         })
         .catch((err) => {
             outputChannel.appendLine(`Error in handleProxyRequest: ${err.message}`);
             webview.postMessage({ command: 'proxyError', error: err.message, url: url });
         });
 }
-
 function saveTabs(context: vscode.ExtensionContext, tabs: Array<{ url: string, title: string }>) {
     context.globalState.update('vscode_browser_tabs', tabs);
 }
