@@ -3,7 +3,7 @@ resources:
     repositories:
         - repository: templates
           type: GitHub
-          name: FoodRES/foodres-azure-shared-pipeline
+          name: FoodRES/foodres-platform-cicd-azure
           ref: refs/heads/master
           endpoint: github
 
